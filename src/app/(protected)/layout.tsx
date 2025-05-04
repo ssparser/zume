@@ -1,14 +1,16 @@
 import { AppSidebar } from '@/components/appsidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { SidebarProvider } from '@/components/ui/sidebar'
-import { UserButton } from '@clerk/nextjs'
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { useClerk, UserButton } from '@clerk/nextjs'
 import React from 'react'
 
 type Props = {
     children: React.ReactNode
 }
 
+
 const layout = ({children}: Props) => {
+
   return (
     <SidebarProvider>
       <AppSidebar/>
@@ -16,6 +18,7 @@ const layout = ({children}: Props) => {
         <div className='flex items-center justify-between gap-2 border-siderbar-border bg-sidebar border shadow rounded-md p-2 px-4'>
             {/* <SearchBar/> */}
             <UserButton/>
+            <SidebarTrigger/>
             <div className='flex flex-row gap-2'>
             <ThemeToggle/>
             <UserButton/>

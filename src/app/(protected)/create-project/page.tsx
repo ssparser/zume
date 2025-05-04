@@ -21,7 +21,7 @@ import { useRefetch } from "@/hooks/use-refetch";
 export const formSchema = z.object({
   githubUrl: z.string().url("Enter a valid repository URL."),
   projectName: z.string().min(3, "Project name must be at least 3 characters."),
-  githubToken: z.string().optional(),
+  githubToken: z.string().length(40, "GitHub token must be exactly 40 characters long"),
 });
 
 const page = () => {

@@ -62,6 +62,7 @@ export async function summariseCode(doc: Document){
     `
       You are a kind and knowledgeable Senior Software Engineer onboarding new interns. Your task is to explain the importance of the source of the document, which is "${doc.metadata.source}", and give a concise explanation of the following code: ${code}.
       Make sure your explanation is clear, easy to understand, and keeps it within 100 words. Your goal is to make the interns feel confident and informed about the project's structure and code.
+      **Important** dont start the sentance by saying Hi interns or Hi team or Hi team members Just start with the explanation.
     `
   ])
   

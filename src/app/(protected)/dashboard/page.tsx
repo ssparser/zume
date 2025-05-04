@@ -36,14 +36,15 @@ const page = () => {
       <AskQuestionCard/>
 
       </div>
-      <Tabs defaultValue="commits" className="w-full">
+      {/* <Tabs defaultValue="commits" className="w-full">
       <TabsList className=" flex flex-row w-[400px] gap-2 ">
         <TabsTrigger value="commits" className="cursor-pointer">Commits</TabsTrigger>
         <TabsTrigger value="password" className="cursor-pointer">Password</TabsTrigger>
       </TabsList>
-      <TabsContent value="commits"> <CommitLog/>
-      </TabsContent>
-      </Tabs>
+      <TabsContent value="commits">  */}
+        <CommitLog/>
+      {/* </TabsContent>
+      </Tabs> */}
     </div>
   );
 };

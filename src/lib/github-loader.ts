@@ -11,7 +11,6 @@ export async function githubLoader(githubUrl: string, githubToken?: string) {
     maxConcurrency: 5,
     recursive: true,
     ignoreFiles: [
-      "package.json",
       "pnpm-lock.yaml",
       "yarn.lock",
       "next.config.js",

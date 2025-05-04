@@ -18,6 +18,11 @@ import { SquareArrowOutUpRight } from "lucide-react";
 
 const CommitLog = () => {
   const { projectId, project } = useProject();
+  console.log("projectId", projectId);
+  console.log("project", project);
+  if (projectId === '') {
+    return <div>No project selected</div>;
+  }
   const { data: commits } = api.project.getCommits.useQuery({ projectId });
   function robustTrim(str: string) {
     return str.replace(/^[\s\u00A0\t]+|[\s\u00A0\t]+$/g, "");
@@ -42,7 +47,7 @@ const CommitLog = () => {
                     <div className="bg-primary absolute top-8 h-full w-px" />
                   )}
                 </div>
-                <Card className="w-full">
+                <Card className="w-full border-2">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       {commit.commitMessage}{" "}
