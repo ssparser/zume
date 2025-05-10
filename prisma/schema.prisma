@@ -33,8 +33,9 @@ model Project {
   githubToken String?
   commits     Commit[]
 
-  userToProjects      UserToProject[]
-  sourceCodeEmbedding SourceCodeEmbedding[]
+  userToProjects      UserToProject[]      
+  sourceCodeEmbedding SourceCodeEmbedding[] 
+
 }
 
 model UserToProject {
@@ -45,7 +46,7 @@ model UserToProject {
   projectId String
 
   user    User    @relation(fields: [userId], references: [id])
-  project Project @relation(fields: [projectId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([userId, projectId])
 }
@@ -55,7 +56,7 @@ model Commit {
   createdAt          DateTime @default(now())
   updated            DateTime @updatedAt
   projectId          String
-  project            Project  @relation(fields: [projectId], references: [id])
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   commitMessage      String
   commitHash         String
   commitAuthorName   String
@@ -73,5 +74,7 @@ model SourceCodeEmbedding {
   filename         String
   summary          String
   projectId        String
-  project          Project                     @relation(fields: [projectId], references: [id])
+  project          Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, filename])
 }

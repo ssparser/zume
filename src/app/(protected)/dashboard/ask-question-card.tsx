@@ -10,7 +10,7 @@ import {
 import MDEditor from "@uiw/react-md-editor";
 import { useProject } from "@/hooks/use-projects";
 import React, { useState } from "react";
-import { askQuestion } from "./actions";
+import { askQuestion } from "../ai/actions";
 import { readStreamableValue } from "ai/rsc";
 import { useTheme } from "next-themes";
 

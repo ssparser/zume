@@ -9,25 +9,48 @@ export const projectRouter = createTRPCRouter({
       z.object({
         projectName: z.string(),
         githubUrl: z.string(),
-        githubToken: z.string().optional(),
+        githubToken: z.string(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const project = await ctx.db.project.create({
-        data: {
-          githubUrl: input.githubUrl,
-          projectName: input.projectName,
-          userToProjects: {
-            create: {
-              userId: ctx.user.userId!,
+      try {
+        const project = await ctx.db.project.create({
+          data: {
+            githubUrl: input.githubUrl,
+            projectName: input.projectName,
+            githubToken: input.githubToken,
+            userToProjects: {
+              create: {
+                userId: ctx.user.userId!,
+              },
             },
           },
-        },
-      });
-      await indexGithubRepo(project.id, input.githubUrl, input.githubToken)
-      await pollCommits(project.id);
-       
-      return project;
+        });
+        
+        try {
+          await indexGithubRepo(project.id, input.githubUrl, input.githubToken)
+          await pollCommits(project.id);
+        } catch (error) {
+          console.error("Failed to poll commits:", error);
+          try {
+            await ctx.db.project.delete({
+              where: {
+          id: project.id,
+              },
+            });
+            console.log("Successfully deleted project after poll commits failure.");
+          } catch (deleteError) {
+            console.error("Failed to delete project after poll commits failure:", deleteError);
+            // Consider more robust error handling here, such as logging to an error tracking service.
+          }
+          throw new Error("Failed to poll commits and project creation was rolled back.");
+        }
+
+        return project;
+      } catch (error) {
+        console.error("Failed to create project:", error);
+        throw new Error("Failed to create project");
+      }
     }),
   getProjects: protectedProcedure.query(async ({ ctx }) => {
     const projects = await ctx.db.project.findMany({
@@ -45,12 +68,12 @@ export const projectRouter = createTRPCRouter({
   getCommits: protectedProcedure
     .input(
       z.object({
-        projectId: z.string()        
+        projectId: z.string()
       }),
     )
     .query(async ({ input, ctx }) => {
       const { projectId } = input;
-      await pollCommits(projectId).then().catch(console.error)
+      await pollCommits(projectId, true).then().catch(console.error)
       const commits = await ctx.db.commit.findMany({
         where: {
           projectId: projectId,

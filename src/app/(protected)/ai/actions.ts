@@ -45,7 +45,10 @@ export async function askQuestion(question: string, projectId: string) {
             END OF CONTEXT BLOCK
             START QUESTION ${question}
             END OF QUESTION
-            The AI assistant will strictly base its answers on the provided CONTEXT BLOCK, using only the information explicitly contained within it.
+            + The AI assistant should base its answers on the CONTEXT BLOCK when possible,
+            + but may generate new code or explanations based on general programming knowledge
+            + if the context is not sufficient to answer the question.
+
             If the context does not provide an answer to the question, the assistant will respond with "I'm sorry, but I don't know." It will not apologize for any prior responses, 
             but will simply incorporate any new information going forward without referencing past errors. The assistant is not allowed to invent or assume anything beyond the content of the context, 
             ensuring factual accuracy tied directly to what is provided. All responses will be formatted in markdown syntax and will include detailed, complete answers written in full paragraphs, 

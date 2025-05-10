@@ -1,36 +1,33 @@
-import { AppSidebar } from '@/components/appsidebar'
-import { ThemeToggle } from '@/components/theme-toggle'
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
-import { useClerk, UserButton } from '@clerk/nextjs'
-import React from 'react'
+import { AppSidebar } from "@/components/appsidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+
+import UserComponent from "@/components/user-component";
 
 type Props = {
-    children: React.ReactNode
-}
+  children: React.ReactNode;
+};
 
-
-const layout = ({children}: Props) => {
-
+const layout = ({ children }: Props) => {
   return (
     <SidebarProvider>
-      <AppSidebar/>
-      <main className='w-full m-2'>
-        <div className='flex items-center justify-between gap-2 border-siderbar-border bg-sidebar border shadow rounded-md p-2 px-4'>
-            {/* <SearchBar/> */}
-            <UserButton/>
-            <SidebarTrigger/>
-            <div className='flex flex-row gap-2'>
-            <ThemeToggle/>
-            <UserButton/>
-            </div>
+      <AppSidebar />
+      <main className="m-2 w-full">
+        <div className="border-siderbar-border bg-sidebar flex items-center justify-between gap-2 rounded-md border p-2 px-4 shadow">
+          {/* <SearchBar/> */}
+          <SidebarTrigger className="cursor-pointer" />
+          <div className="flex flex-row items-center gap-2">
+            <ThemeToggle />
+            <UserComponent />
+          </div>
         </div>
-        <div className='h-4'/>
-        <div className='border-sidebar-border bg-sidebar border shadow rounded-md overflow-y-scroll h-[calc(100dvh-85px)] p-4'>
+        <div className="h-4" />
+        <div className="border-sidebar-border bg-sidebar h-[calc(100dvh-95px)] overflow-y-scroll rounded-md border p-4 shadow">
           {children}
         </div>
       </main>
     </SidebarProvider>
-  )
-}
+  );
+};
 
-export default layout
+export default layout;

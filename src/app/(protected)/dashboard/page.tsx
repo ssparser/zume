@@ -15,7 +15,7 @@ const page = () => {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-y-4">
-        <div className="bg-primary flex w-fit flex-row items-center gap-2 rounded-md px-4 py-3">
+        <div className="bg-gradient-to-r from-purple-500 to-blue-500 flex w-fit flex-row items-center gap-2 rounded-md px-4 py-3">
           <Github className="size-5 text-white" />
           <p className="text-white">
             This project is linked to{" "}
@@ -33,7 +33,7 @@ const page = () => {
        
       </div>
       <div className="flex flex-row ">
-      <AskQuestionCard/>
+      {/* <AskQuestionCard/> */}
 
       </div>
       {/* <Tabs defaultValue="commits" className="w-full">
@@ -42,6 +42,7 @@ const page = () => {
         <TabsTrigger value="password" className="cursor-pointer">Password</TabsTrigger>
       </TabsList>
       <TabsContent value="commits">  */}
+      <div className="h-4" />
         <CommitLog/>
       {/* </TabsContent>
       </Tabs> */}

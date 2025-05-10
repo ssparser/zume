@@ -2,10 +2,12 @@ import { db } from "@/server/db";
 import { Octokit } from "octokit";
 import { summariseCommitByAI } from "./gemni";
 import axios from "axios";
+import { any } from "zod";
+import { indexGithubRepo2 } from "./github-loader";
 
 
 export const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
+  auth: '',
 });
 
 type commit = {
@@ -24,6 +26,9 @@ type Issue = {
   createdAt: string;
   url: string;
 };
+
+type FileMap = Map<string, Set<string>>;
+
 
 /**
  * Retrieves a list of commit hashes and associated information from a GitHub repository.
@@ -105,6 +110,59 @@ async function filterUnProccesedCommits(
   return unprocessedCommits;
 }
 
+async function summariseCommitWithEmbeddings(
+  githubURL: string,
+  commitHash: string,
+  githubToken: string,
+  projectId: string,
+  fileMap: FileMap,
+) 
+{
+  console.log("inside summarise with embeddings block ");
+  const [owner, repo] = githubURL.split("/").slice(-2);
+    if (!owner || !repo) {
+      throw new Error("Invalid GitHub URL format");
+    }
+  console.log("owner and repo", owner, repo);
+  try {
+    console.log(githubURL)
+ 
+    const { data: commitData } = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/commits/${commitHash}`,
+      {
+        headers: {
+          Accept: 'application/vnd.github.v3+json',
+          Authorization: `Bearer ${githubToken}`,
+        },
+      }
+    );
+    
+    console.log("commit data", commitData);
+    for (const file of commitData.files) {
+      if (file.status === "added" || file.status === "modified") {
+        fileMap.get("new/modified")?.add(file.filename);
+      } else if (file.status === "removed") {
+        fileMap.get("deleted")?.add(file.filename);
+      }
+    }
+    const changedFiles = commitData.files.map((file: any) => ({
+      filename: file.filename,
+      status: file.status,
+      additions: file.additions,
+      deletions: file.deletions,
+      changes: file.changes,
+      patch: file.patch
+     
+    }));
+    console.log("Changed files:", changedFiles);
+    console.log("data", changedFiles[0].filename as string);
+    return await summariseCommitByAI(changedFiles[0].patch as string);
+  }
+catch(error: any){
+  console.error("Error fetching commit data:", error);
+  throw new Error("mg hectro error 2");
+}}
+
 /**
  * @param githubURL - The URL of the GitHub repository.
  * @param commitHash - The hash of the commit to summarise.
@@ -121,18 +179,68 @@ async function summariseCommit(
 ) {
   console.log("inside summarise commit block mg");
   const [owner, repo] = githubURL.split("/").slice(-2);
-  const data = await axios.get(
-    `https://api.github.com/repos/${owner}/${repo}/commits/${commitHash}`,
-    {
-      headers: {
-        Accept: "application/vnd.github.v3.diff",
-        Authorization: `token ${githubToken}`,
-      },
-    },
-  );
-
-  console.log(data.data);
-  return await summariseCommitByAI(data.data);
+    if (!owner || !repo) {
+      throw new Error("Invalid GitHub URL format");
+    }
+  console.log("owner and repo", owner, repo);
+  try {
+    const octokit = new Octokit({
+      auth: githubToken
+    });
+    console.log(githubURL)
+    // Get commit data
+    // const { data: data } = await octokit.rest.repos.getCommit({
+    //   owner,
+    //   repo,
+    //   ref: commitHash,
+    //   mediaType: {
+    //     format: 'diff'
+    //   }
+    // });
+    const { data: commitData } = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/commits/${commitHash}`,
+      {
+        headers: {
+          Accept: 'application/vnd.github.v3+json',
+          Authorization: `Bearer ${githubToken}`,
+        },
+      }
+    );
+    console.log("data", commitData);
+    // const diffResponse = await axios.get(
+    //   `https://api.github.com/repos/${owner}/${repo}/compare/${data.parents[0].sha}...${commitHash}`,
+    //   {
+    //     headers: {
+    //       Accept: 'application/vnd.github.v3+json',
+    //       Authorization: `Bearer ${githubToken}`,
+    //     },
+    //   }
+    // );
+    // const changedFiles = diffResponse.data.files.map((file: any) => ({
+    //   filename: file.filename,
+    //   status: file.status,
+    //   additions: file.additions,
+    //   deletions: file.deletions,
+    //   changes: file.changes,
+    //   patch: file.patch
+    // }));
+  
+    // console.log("Changed files:", changedFiles);
+    
+    // const diffSummary = changedFiles
+    //   .map((file: any) => `File: ${file.filename}\n${file.patch || ''}`)
+    //   .join('\n\n');
+  
+    // if (changedFiles.length > 0) {
+    //   return await summariseCommitByAI(diffSummary);
+    // } else {
+    //   console.log("No files found in commit data");
+    // }
+    return await summariseCommitByAI(commitData.files[0].patch as string);
+  } catch (error: any) {
+    console.error("Error fetching commit data:", error);
+    throw new Error("mg hectro error 2");
+  }
 }
 
 /**
@@ -145,76 +253,118 @@ async function summariseCommit(
  * @param projectId - The ID of the project to poll commits for.
  * @returns A promise that resolves to the result of creating the commits in the database.
  */
-
-export const pollCommits = async (projectId: string) => {
+export const pollCommits = async (projectId: string, withEmbeddings: Boolean = false) => {
   console.log("entered poll commits");
 
-  const { project, githubURL, githubToken } =
-    await fetchProjectGithubUrl(projectId);
-  console.log("Fetched project and GitHub URL:", {
-    project,
-    githubURL,
-    githubToken,
-  });
-  if (!githubURL) {
-    throw new Error("No GitHub URL found for the project.");
-  }
-  
-  const commitHashes = await getCommitHashes(githubURL);
-  console.log("Fetched commit hashes:", commitHashes);
-
-  const unprocessedCommits = await filterUnProccesedCommits(
-    projectId,
-    commitHashes,
-  );
-  console.log("Filtered unprocessed commits:", unprocessedCommits);
-
-  const summaryList = [];
-
-  for (const commit of unprocessedCommits) {
-    console.log("Summarizing commit:", commit.commitHash);
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    const summary = await summariseCommit(
+  try {
+    const { project, githubURL, githubToken } =
+      await fetchProjectGithubUrl(projectId);
+    console.log("Fetched project and GitHub URL:", {
+      project,
       githubURL,
-      commit.commitHash,
       githubToken,
-    );
-    console.log("Generated summary for commit:", commit.commitHash, summary);
-
-    summaryList.push({
-      ...commit,
-      summary,
-      status: "fulfilled",
     });
+    if (!githubURL) {
+      throw new Error("No GitHub URL found for the project.");
+    }
+
+    const commitHashes = await getCommitHashes(githubURL);
+    console.log("Fetched commit hashes:", commitHashes);
+
+    const unprocessedCommits = await filterUnProccesedCommits(
+      projectId,
+      commitHashes,
+    );
+    console.log("Filtered unprocessed commits:", unprocessedCommits);
+
+    const summaryList = [];
+    const fileMap: FileMap = new Map([['new/modified', new Set()], ['deleted', new Set()]]);
+
+    for (const commit of unprocessedCommits) {
+      console.log("Summarizing commit:", commit.commitHash);
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      let summary
+      if (withEmbeddings) {
+         summary = await summariseCommitWithEmbeddings(
+          githubURL,
+          commit.commitHash,
+          githubToken,
+          projectId,
+          fileMap
+        );
+        console.log(fileMap)
+        await indexGithubRepo2(projectId, githubURL, githubToken, fileMap);
+
+      }
+      else{
+       summary = await summariseCommit(
+        githubURL,
+        commit.commitHash,
+        githubToken,
+      );
+    }
+      console.log("Generated summary for commit:", commit.commitHash, summary);
+
+      summaryList.push({
+        ...commit,
+        summary,
+        status: "fulfilled",
+      });
+    }
+
+    console.log("Summary list after Promise.all:", summaryList);
+
+    const fulfilledCommits = summaryList.filter(
+      (commit) => commit.status === "fulfilled",
+    );
+    console.log("Filtered fulfilled commits:", fulfilledCommits);
+
+    const commit = await db.commit.createMany({
+      data: fulfilledCommits.map((commit, index) => {
+        console.log("Mapping commit to database format:", commit);
+
+        return {
+          projectId: projectId,
+          commitHash: commit.commitHash,
+          commitMessage: commit.commitMessage,
+          commitAuthorName: commit.commitAuthorName,
+          commitAuthorAvatar: commit.commitAuthorAvatar,
+          commitDate: commit.commitDate,
+          summary: commit.summary || "",
+        };
+      }),
+    });
+
+    console.log("Database commit creation result:", commit);
+
+    return commit;
+  } catch (error: any) {
+    console.error("Error in pollCommits:", error);
+    throw error;
   }
-
-  console.log("Summary list after Promise.all:", summaryList);
-
-  const fulfilledCommits = summaryList.filter(
-    (commit) => commit.status === "fulfilled",
-  );
-  console.log("Filtered fulfilled commits:", fulfilledCommits);
-
-  const commit = await db.commit.createMany({
-    data: fulfilledCommits.map((commit, index) => {
-      console.log("Mapping commit to database format:", commit);
-
-      return {
-        projectId: projectId,
-        commitHash: commit.commitHash,
-        commitMessage: commit.commitMessage,
-        commitAuthorName: commit.commitAuthorName,
-        commitAuthorAvatar: commit.commitAuthorAvatar,
-        commitDate: commit.commitDate,
-        summary: commit.summary,
-      };
-    }),
-  });
-
-  console.log("Database commit creation result:", commit);
-
-  return commit;
 };
+
+// export const pollCommitsWithEmbeddings = async (projectId: string) => {
+//   console.log("entered poll commits with embeddings");
+//   try {
+//     const { project, githubURL, githubToken } =  await fetchProjectGithubUrl(projectId);
+//     if (!githubURL) {
+//       throw new Error("No GitHub URL found for the project.");
+//     }
+//       const commitHashes = await getCommitHashes(githubURL);
+//     console.log("Fetched commit hashes:", commitHashes);
+
+//     const unprocessedCommits = await filterUnProccesedCommits(
+//       projectId,
+//       commitHashes,
+//     );
+//     console.log("Filtered unprocessed commits:", unprocessedCommits);
+//   }
+//   catch (error: any) {
+//     console.error("Error in pollCommitsWithEmbeddings:", error);
+//     throw error;
+//   }
+// }
 
 // export const getOpenIssues = async (githubUrl: string): Promise<Issue[]> => {
 //     const [owner, repo] = githubUrl.split('/').slice(-2)
